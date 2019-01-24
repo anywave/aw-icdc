@@ -1,4 +1,3 @@
-
 import functools
 
 import numpy as np
@@ -11,7 +10,9 @@ from .core import Action
 from . import stat, util
 
 
-def lfdr_detect(fs, y, q=1e-3, minel=0.0, maxel=0.5, rf=0.5, ht=False, dc=1, info=False):
+def lfdr_detect(
+    fs, y, q=1e-3, minel=0.0, maxel=0.5, rf=0.5, ht=False, dc=1, info=False
+):
     """
     Perform detection on continuous signal `y`.
 
@@ -53,47 +54,47 @@ def lfdr_detect(fs, y, q=1e-3, minel=0.0, maxel=0.5, rf=0.5, ht=False, dc=1, inf
     """
 
     fs = float(fs)
-    
-    t = np.r_[:len(y)]/fs
-    
+
+    t = np.r_[: len(y)] / fs
+
     # analyze distribution
     xb, f, cf, fdr, llx = stat.lfdr(y, dc=dc, doplot=False)
-    
-    # fdr tarnsform hilbert 
+
+    # fdr tarnsform hilbert
     if ht:
         hy = abs(signal.hilbert(y))
         llh = np.interp(hy, xb, np.log(fdr))
     else:
         hy, llh = y, llx
-    
-    # generate events    
+
+    # generate events
     ev = np.c_[np.isfinite(llh), llh < np.log(q)].all(axis=1)
     ev[~np.isfinite(llh)] = True
-    e0, = np.argwhere(np.c_[~ev[:-1],  ev[1:]].all(axis=1)).T
-    e1, = np.argwhere(np.c_[ ev[:-1], ~ev[1:]].all(axis=1)).T
-    
+    e0, = np.argwhere(np.c_[~ev[:-1], ev[1:]].all(axis=1)).T
+    e1, = np.argwhere(np.c_[ev[:-1], ~ev[1:]].all(axis=1)).T
+
     if len(e0) == 0 or len(e1) == 0:
         return locals() if info else []
-    
+
     # boundaries
     if e1[0] < e0[0]:
         e0 = np.r_[0, e0]
     if e0[-1] > e1[-1]:
-        e1 = np.r_[e1, llh.shape[0]-1]
-    
+        e1 = np.r_[e1, llh.shape[0] - 1]
+
     # compute event length and long-enough mask
-    el = np.diff(np.c_[e0, e1])[:, 0]/fs
+    el = np.diff(np.c_[e0, e1])[:, 0] / fs
     le = np.c_[el > minel, el < maxel].all(axis=1)
-    
+
     # pull out remaining peaks & align them
     peaks = []
     for i, (e0i, e1i) in enumerate(zip(e0[le], e1[le])):
         hi = np.abs(hy[e0i:e1i])
-        peaks.append((hi.max(), t[e0i] + np.argmax(hi)/fs))
-    
+        peaks.append((hi.max(), t[e0i] + np.argmax(hi) / fs))
+
     if len(peaks) == 0:
         return locals() if info else []
-    
+
     # mask refractory period
     ph, pt = np.array(peaks).T
     nonmask = []
@@ -101,9 +102,9 @@ def lfdr_detect(fs, y, q=1e-3, minel=0.0, maxel=0.5, rf=0.5, ht=False, dc=1, inf
         mask = np.c_[pt > pti - rf, pt < pti + rf].all(axis=1)
         if (phi >= ph[mask]).all():
             nonmask.append(i)
-    
+
     nfpeak = np.array(peaks)[np.array(nonmask), 1]
-    
+
     return locals() if info else nfpeak
 
 
@@ -127,15 +128,33 @@ def batch_lfdr_detect(fs, y, n_jobs=1, **kwds):
     with util.mpool(n_jobs) as p:
         results = p.map(_lfdr_detect_single, jobs)
     return results
- 
+
 
 detection_parameters = [
-    {'name': 'Q value', 'type': 'float', 'value': 1e-5},
-    {'name': 'Minimum event length', 'type': 'float', 'value': 0.0, 'siPrefix': True, 'suffix': 's'},
-    {'name': 'Maximum event length', 'type': 'float', 'value': 0.5, 'siPrefix': True, 'suffix': 's'},
-    {'name': 'Refractory period', 'type': 'float', 'value': 0.2, 'siPrefix': True, 'suffix': 's'},
-    {'name': 'Decimate', 'type': 'int', 'value': 5},
-    {'name': 'Use Hilbert transform', 'type': 'bool', 'value': False},
+    {"name": "Q value", "type": "float", "value": 1e-5},
+    {
+        "name": "Minimum event length",
+        "type": "float",
+        "value": 0.0,
+        "siPrefix": True,
+        "suffix": "s",
+    },
+    {
+        "name": "Maximum event length",
+        "type": "float",
+        "value": 0.5,
+        "siPrefix": True,
+        "suffix": "s",
+    },
+    {
+        "name": "Refractory period",
+        "type": "float",
+        "value": 0.2,
+        "siPrefix": True,
+        "suffix": "s",
+    },
+    {"name": "Decimate", "type": "int", "value": 5},
+    {"name": "Use Hilbert transform", "type": "bool", "value": False},
 ]
 
 
@@ -143,8 +162,10 @@ class DetectParTree(ParameterTree):
     def __init__(self, parent=None):
         ParameterTree.__init__(self, parent=parent)
         self.pars = Parameter.create(
-            name='detect', type='group', children=detection_parameters)
+            name="detect", type="group", children=detection_parameters
+        )
         self.setParameters(self.pars, showTop=False)
+
 
 class DetectSettingsDialog(QtGui.QDialog):
     def __init__(self, parent=None):
@@ -160,11 +181,11 @@ class DetectSettingsDialog(QtGui.QDialog):
         self.lay_buttons = QtGui.QHBoxLayout()
         self.lay.addLayout(self.lay_buttons)
 
-        self.pb_no = QtGui.QPushButton('&Cancel')
+        self.pb_no = QtGui.QPushButton("&Cancel")
         self.pb_no.clicked.connect(self.reject)
         self.lay_buttons.addWidget(self.pb_no)
 
-        self.pb_ok = QtGui.QPushButton('&OK')
+        self.pb_ok = QtGui.QPushButton("&OK")
         self.pb_ok.clicked.connect(self.accept)
         self.lay_buttons.addWidget(self.pb_ok)
         self.pb_ok.setDefault(True)
@@ -187,28 +208,53 @@ class InteractiveDetection(Action):
 
     """
 
+
 class RunDetect(Action):
     _text = "&Run standard detection"
     _shortcut = "F5"
+
     def run(self):
         dsd = DetectSettingsDialog(parent=self.main)
-        self.status.emit('getting settings from user...')
+        self.status.emit("getting settings from user...")
         ret = dsd.exec_()
         if ret:
             ds = self.main.dataset
             q, minel, maxel, rf, dc, ht = dsd.values
-            ds.detection = 'detect with q=%g minel=%f maxel=%f rf=%f dc=%d ht=%s' % (q, minel, maxel, rf, dc, ht)
+            ds.detection = "detect with q=%g minel=%f maxel=%f rf=%f dc=%d ht=%s" % (
+                q,
+                minel,
+                maxel,
+                rf,
+                dc,
+                ht,
+            )
             self.status.emit(ds.detection)
             ds = self.main.dataset
-            events = batch_lfdr_detect(ds.fs, ds.data[ds.pick_mask], 
-                q=q, minel=minel, maxel=maxel, rf=rf, ht=ht, dc=dc, info=False)
+            events = batch_lfdr_detect(
+                ds.fs,
+                ds.data[ds.pick_mask],
+                q=q,
+                minel=minel,
+                maxel=maxel,
+                rf=rf,
+                ht=ht,
+                dc=dc,
+                info=False,
+            )
             pidx = ds.pick_idx
             for i, chev in enumerate(events):
                 for ev in chev:
-                    ds.events.append({'label': 'spike', 'value': 4200, 'time': ev, 'targets': [pidx[i]]})
+                    ds.events.append(
+                        {
+                            "label": "spike",
+                            "value": 4200,
+                            "time": ev,
+                            "targets": [pidx[i]],
+                        }
+                    )
+
 
 # TODO actions shouldn't be enabled unless possible..
 #  how to manage chain of dependencies in workflow, and update..
 
 actions = [RunDetect, SelectChannels, InteractiveDetection]
-

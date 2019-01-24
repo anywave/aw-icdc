@@ -1,4 +1,3 @@
-
 """
 iidc.stat
 =========
@@ -13,9 +12,11 @@ from scipy import stats, signal, optimize
 
 from . import util
 
-def find(condition): # from matplotlib.mlab
+
+def find(condition):  # from matplotlib.mlab
     res, = np.nonzero(np.ravel(condition))
     return res
+
 
 def fdr(p, alpha=0.05):
     r"""
@@ -25,8 +26,8 @@ def fdr(p, alpha=0.05):
     """
 
     p_sorted = np.sort(p.flat[:])
-    count_p = np.r_[:p.size] + 1
-    limit = count_p * alpha / np.sum(1./count_p) / p.size
+    count_p = np.r_[: p.size] + 1
+    limit = count_p * alpha / np.sum(1.0 / count_p) / p.size
     under = find(p_sorted < limit)
     p_thresh = p_sorted[under[-1]] if under.size > 0 else 0.0
     h0_rejected = p < p_thresh
@@ -75,16 +76,18 @@ def lfdr(x, nbins=50, dc=1, doplot=True):
         Log lfdr for each datapoint in `x`
 
     """
-    
+
     k = stats.gaussian_kde(x[::dc])
-    xb = np.r_[x.min() : x.max() : 1j*nbins]
+    xb = np.r_[x.min() : x.max() : 1j * nbins]
     f = k(xb)
     f /= f.sum()
-    
+
     # TODO use argsort to avoid evaluating f on linspace twice
-    dxb = np.interp(np.r_[0.0:1.0:1j*nbins], np.cumsum(f), xb + (xb[1] - xb[0])/2.0)
+    dxb = np.interp(
+        np.r_[0.0 : 1.0 : 1j * nbins], np.cumsum(f), xb + (xb[1] - xb[0]) / 2.0
+    )
     xb = np.unique(np.r_[xb, dxb])
-    xb.sort()                
+    xb.sort()
     f = k(xb)
     f /= f.sum()
 
@@ -94,28 +97,31 @@ def lfdr(x, nbins=50, dc=1, doplot=True):
         sl = slice(np.argmin(np.abs(xb - alo)), np.argmin(np.abs(xb - ahi)))
         f0 = stats.norm.pdf(xb[sl], loc=mu, scale=sigma)
         f1 = f[sl]
-        f0 = f0/f0.max()*f1.max()
-        return np.sum((f0 - f1)**2)/np.sum(f1**2) - f1.sum()
-    
+        f0 = f0 / f0.max() * f1.max()
+        return np.sum((f0 - f1) ** 2) / np.sum(f1 ** 2) - f1.sum()
+
     mu0, sig0 = x.mean(), x.std()
-    mu, sig, _, _ = optimize.fmin(err, (mu0, sig0, mu0-sig0, mu0+sig0), disp=0, maxiter=1000)
+    mu, sig, _, _ = optimize.fmin(
+        err, (mu0, sig0, mu0 - sig0, mu0 + sig0), disp=0, maxiter=1000
+    )
     cf = stats.norm.pdf(xb, loc=mu, scale=sig)
-    cf = cf/cf.max()*f.max()
-        
+    cf = cf / cf.max() * f.max()
+
     # compute lfdr & transform data to log-lfdr
-    fdr = np.clip(cf/f, 0.0, 1.0)
+    fdr = np.clip(cf / f, 0.0, 1.0)
     llx = np.interp(x, xb, np.log(fdr))
 
     if doplot:
         import pylab as pl
-        pl.semilogy(xb, f, 'k')
-        pl.semilogy(xb, cf, 'k--')
-        pl.semilogy(xb, fdr, 'k.')
+
+        pl.semilogy(xb, f, "k")
+        pl.semilogy(xb, cf, "k--")
+        pl.semilogy(xb, fdr, "k.")
         pl.grid(True)
         pl.ylim([1e-5, 1.0])
-        plevels=[0.2, 0.1, 0.05, 0.01, 0.001]
-        pl.yticks(plevels, map(str, plevels))
-        
+        plevels = [0.2, 0.1, 0.05, 0.01, 0.001]
+        pl.yticks(plevels, list(map(str, plevels)))
+
     return xb, f, cf, fdr, llx
 
 
@@ -132,7 +138,7 @@ def threshold_duration(sig, length):
         bounds = np.r_[0, bounds, len(sigj)]
         for i, seg in enumerate(segments):
             if seg.sum() < length:
-                sigj[bounds[i]:bounds[i+1]] = False
+                sigj[bounds[i] : bounds[i + 1]] = False
     return sig
 
 
@@ -149,4 +155,3 @@ def per_channel_events_pvalues(fs, data, events):
             _, p = stats.ttest_1samp(ep, 0.0, axis=0)
             P.append(p)
     return np.array(P)
-

@@ -1,11 +1,12 @@
-
 import numpy as np
 
 from .core import ParamsDialog
 from .qt import pg, QtGui
 
 from . import util, cluster
-reload(util)
+import importlib
+
+importlib.reload(util)
 
 from pyqtgraph.console import ConsoleWidget
 

@@ -1,4 +1,3 @@
-
 """
 Interactive selectors and viewers?
 
@@ -14,7 +13,8 @@ from pyqtgraph import QtCore as qc, QtGui as qg
 from pyqtgraph import console
 
 from . import stat
-#from . import util
+
+# from . import util
 
 
 class CloudPicker(pg.PlotWidget):
@@ -41,8 +41,8 @@ class CloudPicker(pg.PlotWidget):
         # hlabel will be highlighted, rest not
         if labels is not None and hlabel is not None:
             _ = labels.copy()
-            _[labels==hlabel] = 0
-            _[labels!=hlabel] = 1
+            _[labels == hlabel] = 0
+            _[labels != hlabel] = 1
             labels = _
         if labels is None:
             labels = np.zeros(self.x.size, np.int32)
@@ -53,21 +53,23 @@ class CloudPicker(pg.PlotWidget):
         self.setup_roi()
 
     def setup_plot(self):
-        self.plot = self#.plot()
+        self.plot = self  # .plot()
         self.showGrid(x=True, y=True)
 
         # don't show the default left & bottom axes
-        [self.plot.showAxis(o, False) for o in ('left', 'bottom')]
+        [self.plot.showAxis(o, False) for o in ("left", "bottom")]
 
         # create & add scatter item to plot
         self.scatters = []
         for i, ul in enumerate(self.ulabels):
             mask = self.labels == ul
             brush = pg.intColor(i, hues=len(self.ulabels), alpha=125)
-            spi = pg.ScatterPlotItem(x=self.x[mask], y=self.y[mask], pen=None, brush=brush)
+            spi = pg.ScatterPlotItem(
+                x=self.x[mask], y=self.y[mask], pen=None, brush=brush
+            )
             self.scatters.append(spi)
 
-        map(self.plot.addItem, self.scatters)
+        list(map(self.plot.addItem, self.scatters))
 
     def setup_roi(self):
         self.roi = pg.CircleROI([0, 0], [1, 1])
@@ -87,7 +89,7 @@ class CloudPicker(pg.PlotWidget):
     def compute_mask(self):
         "Compute & return bool mask selecting points inside roi"
         (cx, cy), (r, _) = self.roi.pos(), self.roi.size()
-        return np.sqrt((self.x - cx)**2 + (self.y - cy)**2) <= r
+        return np.sqrt((self.x - cx) ** 2 + (self.y - cy) ** 2) <= r
 
 
 class CloudStats(pg.PlotWidget):
@@ -116,24 +118,29 @@ class CloudStats(pg.PlotWidget):
 
     def setup_lut(self):
         "Create typical blue neg, black zero, red positive color map"
-        self.lut = np.r_[np.zeros(128), np.r_[:128]]*2
-        self.lut = np.c_[self.lut, self.lut*0.0, self.lut[::-1]].astype(np.ubyte)
+        self.lut = np.r_[np.zeros(128), np.r_[:128]] * 2
+        self.lut = np.c_[self.lut, self.lut * 0.0, self.lut[::-1]].astype(np.ubyte)
 
     def setup_plot(self):
         "Scaffold plot and image item"
-        self.plot = self#.plot()
+        self.plot = self  # .plot()
         self.showGrid(x=True, y=True)
 
         if self.ep.ndim == 3:
-            self.plot.getAxis('left').setTicks([ [(i + 0.5, l) for i, l in enumerate(self.labels)] ])
-            self.plot.getAxis('left').setWidth(100)
+            self.plot.getAxis("left").setTicks(
+                [[(i + 0.5, l) for i, l in enumerate(self.labels)]]
+            )
+            self.plot.getAxis("left").setWidth(100)
 
         wnsamp = self.ep.shape[1]
         winsz = wnsamp * 1.0 / self.fs
-        xts = [(int(wnsamp*ph), '%0.3f' % ((ph-0.5)*winsz,)) for ph in [0.0, 0.5, 1.0]]
-        self.plot.getAxis('bottom').setTicks([xts])
+        xts = [
+            (int(wnsamp * ph), "%0.3f" % ((ph - 0.5) * winsz,))
+            for ph in [0.0, 0.5, 1.0]
+        ]
+        self.plot.getAxis("bottom").setTicks([xts])
 
-        #self.plot.getAxis('left').setTicks(util.seeg_major_minor_ch_labels(self.labels))
+        # self.plot.getAxis('left').setTicks(util.seeg_major_minor_ch_labels(self.labels))
 
         self.image = pg.ImageItem()
         if self.ep.ndim == 3:
@@ -143,7 +150,7 @@ class CloudStats(pg.PlotWidget):
     def select_ep(self, mask, skip=True):
         "Select epochs on mask, maybe skipping some if too many"
         if skip:
-            mask = np.r_[:mask.size][mask][::(mask.sum()/self.n_ep_fast + 1)]
+            mask = np.r_[: mask.size][mask][:: (mask.sum() / self.n_ep_fast + 1)]
         return self.ep[mask]
 
     def compute_map(self, epi):
@@ -153,21 +160,22 @@ class CloudStats(pg.PlotWidget):
         return (P < PT) * epi.mean(axis=0)
 
     _level_scale = 1.0
+
     def update_image(self, mask, skip=True):
         "Update stat map on displayed image based on mask"
         epi = self.select_ep(mask, skip=skip)
         if epi.ndim == 3:
-            std = epi.std()/self._level_scale
+            std = epi.std() / self._level_scale
             self.image.setLevels([std, -std])
             self.image.setImage(self.compute_map(epi), autoLevels=False)
         elif epi.ndim == 2:
-            T = np.tile(np.r_[:epi.shape[1]], (epi.shape[0], 1)).ravel()
+            T = np.tile(np.r_[: epi.shape[1]], (epi.shape[0], 1)).ravel()
             Y = epi.ravel()
             q5, q95 = np.percentile(Y, [0.1, 99.9])
             H, _, _ = np.histogram2d(T, np.clip(Y, q5, q95), (epi.shape[1], 200))
             self.image.setImage(np.log(H + 1))
         else:
-            raise ValueError('ep must have 2 or 3 dim, found %d' % (epi.ndim, ))
+            raise ValueError("ep must have 2 or 3 dim, found %d" % (epi.ndim,))
 
     # help with interactive update
     _full_timer = None
@@ -176,7 +184,7 @@ class CloudStats(pg.PlotWidget):
     def interactive_update(self, mask):
         "Update map, first quickly, then with full stats"
 
-        # rate limit interactive updates to 5 hz 
+        # rate limit interactive updates to 5 hz
         now = time.time()
         if now - self._last_update < 0.2:
             return
@@ -190,12 +198,12 @@ class CloudStats(pg.PlotWidget):
         self.update_image(mask)
 
         # schedule full update after 200 ms
-        self._full_timer = qc.QTimer.singleShot(200,
-                lambda : self.update_image(mask, skip=False))
+        self._full_timer = qc.QTimer.singleShot(
+            200, lambda: self.update_image(mask, skip=False)
+        )
 
 
 class ClassAtlas(qg.QMainWindow):
-    
     def __init__(self, fs, events, ep, xy, labels, ch_labels, parent=None):
 
         qg.QMainWindow.__init__(self, parent=parent)
@@ -204,14 +212,14 @@ class ClassAtlas(qg.QMainWindow):
 
         self.split_main = qg.QSplitter(qc.Qt.Horizontal)
         self.setCentralWidget(self.split_main)
-        self.setWindowTitle('Class Atlas')
+        self.setWindowTitle("Class Atlas")
 
         self.split_ctrl = qg.QSplitter(qc.Qt.Vertical)
         """
         self.cli = console.ConsoleWidget(namespace={'ca':self}, editor='gvim {fileName} +{lineNum}')
         self.split_ctrl.addWidget(self.cli)
         """
-        self.b_add_class = qg.QPushButton('Add class')
+        self.b_add_class = qg.QPushButton("Add class")
         self.b_add_class.clicked.connect(self._b_add_class_cb)
         self.lay_ctrl = qg.QVBoxLayout()
         self.split_ctrl.setLayout(self.lay_ctrl)
@@ -240,12 +248,12 @@ class ClassAtlas(qg.QMainWindow):
         self.split_views.addWidget(self.w_lay_pickers)
         self.split_views.addWidget(self.w_lay_stats)
         self.split_views.setSizes([150, 700])
-        #self.split_views.addWidget(self.pw_timeline)
-        
+        # self.split_views.addWidget(self.pw_timeline)
+
         self.classes = []
         for i in np.unique(labels):
             self.add_class(hlabel=i)
-            self.classes[-1]['stats'].interactive_update(labels==i)
+            self.classes[-1]["stats"].interactive_update(labels == i)
 
     def _b_add_class_cb(self, *args):
         self.add_class()
@@ -270,27 +278,25 @@ class ClassAtlas(qg.QMainWindow):
 
 
 class ScatterStat(pg.QtGui.QWidget):
-
     def __init__(self, *args, **kwds):
         pg.QtGui.QWidget.__init__(self)
         self.lay = pg.QtGui.QVBoxLayout()
         self.setLayout(self.lay)
-        self.gw = pg.GraphicsWindow()#.__init__(self, *args, **kwds)
+        self.gw = pg.GraphicsWindow()  # .__init__(self, *args, **kwds)
         self.lay.addWidget(self.gw)
         self.rows = []
-        self.lut = np.r_[np.zeros(128), np.r_[:128]]*2
-        self.lut = np.c_[self.lut, self.lut*0.0, self.lut[::-1]].astype(np.ubyte)
-        self.b_add_row = pg.QtGui.QPushButton('Add row with same data')
+        self.lut = np.r_[np.zeros(128), np.r_[:128]] * 2
+        self.lut = np.c_[self.lut, self.lut * 0.0, self.lut[::-1]].astype(np.ubyte)
+        self.b_add_row = pg.QtGui.QPushButton("Add row with same data")
         self.b_add_row.clicked.connect(self._add_row_same_data)
         self.lay.addWidget(self.b_add_row)
         self.add_row(*args)
-        self.n_ep_fast = kwds.pop('n_ep_fast', 50)
-        self.alpha = kwds.pop('alpha', 0.05)
+        self.n_ep_fast = kwds.pop("n_ep_fast", 50)
+        self.alpha = kwds.pop("alpha", 0.05)
         self.show()
 
-
     def _add_row_same_data(self):
-        self.add_row(*[self.rows[-1][k] for k in 'xi labels ep ch_labels'.split()])
+        self.add_row(*[self.rows[-1][k] for k in "xi labels ep ch_labels".split()])
 
     def add_row(self, xi, labels, ep, ch_labels):
 
@@ -303,11 +309,13 @@ class ScatterStat(pg.QtGui.QWidget):
 
         # plot embedded data, classes in different colors
         p_xi = self.gw.addPlot()
-        [p_xi.showAxis(o, False) for o in ('left', 'bottom')]
+        [p_xi.showAxis(o, False) for o in ("left", "bottom")]
         s_xi = pg.ScatterPlotItem()
         for i, ulab in enumerate(ulabels):
             mask = labels == ulab
-            s_xi.addPoints(x[mask], y[mask], pen=None, symbol='+')#, brush=(i, len(ulabels)))
+            s_xi.addPoints(
+                x[mask], y[mask], pen=None, symbol="+"
+            )  # , brush=(i, len(ulabels)))
         p_xi.addItem(s_xi)
 
         # setup roi
@@ -316,11 +324,13 @@ class ScatterStat(pg.QtGui.QWidget):
 
         # setup stat plot
         p_stat = self.gw.addPlot()
-        p_stat.getAxis('left').setTicks([[], [(i+0.5, l) for i, l in enumerate(ch_labels)]])
+        p_stat.getAxis("left").setTicks(
+            [[], [(i + 0.5, l) for i, l in enumerate(ch_labels)]]
+        )
         i_stat = pg.ImageItem()
         i_stat.setLookupTable(self.lut)
         p_stat.addItem(i_stat)
-        
+
         # setup callback to update i_stat on r_xi selection of s_xi points
         tic = [time.time(), None]
 
@@ -331,9 +341,9 @@ class ScatterStat(pg.QtGui.QWidget):
                 tic[0] = time.time()
             cx, cy = roi.pos()
             r, _ = roi.size()
-            mask = np.sqrt((x - cx)**2 + (y - cy)**2) <= r
-            skip = 1 if noskip else mask.sum()/self.n_ep_fast + 1
-            maski = np.r_[:mask.shape[0]][mask]
+            mask = np.sqrt((x - cx) ** 2 + (y - cy) ** 2) <= r
+            skip = 1 if noskip else mask.sum() / self.n_ep_fast + 1
+            maski = np.r_[: mask.shape[0]][mask]
             epi = ep[mask[::skip]]
             std = epi.std()
             i_stat.setLevels([std, -std])
@@ -342,16 +352,19 @@ class ScatterStat(pg.QtGui.QWidget):
                 PT, _ = stat.fdr(P, alpha=self.alpha)
                 i_stat.setImage((P < PT) * epi.mean(axis=0), autoLevels=False)
             except Exception as e:
-                print '%r row[%d] update_stats_of_roi failed with %r' % (self, row_idx, e)
+                print(
+                    "%r row[%d] update_stats_of_roi failed with %r" % (self, row_idx, e)
+                )
 
             # if we skipped data in fast interactive, wait 500 ms and update with full stats
             if skip > 1:
+
                 def fullupdate():
                     update_stats_of_roi(r_xi, noskip=True)
-                if tic[1] is not None: # TODO REFACTOR
+
+                if tic[1] is not None:  # TODO REFACTOR
                     tic[1].stop()
                 tic[1] = pg.QtCore.QTimer.singleShot(200, fullupdate)
-
 
         r_xi.sigRegionChanged.connect(update_stats_of_roi)
 

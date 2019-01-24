@@ -1,5 +1,3 @@
-
-
 """
 Utilities, not organized.
 
@@ -16,6 +14,7 @@ import multiprocessing
 import numpy as np
 
 from .qt import QtGui, QtCore, pg, qt_core_enum
+
 
 def which(program):
     """
@@ -57,10 +56,10 @@ def find_file(path, patt):
     """
 
     files = []
-    path_ = unicode(glob.glob(path)[0])
+    path_ = str(glob.glob(path)[0])
     for r, _, fs in os.walk(path_):
         for f in fs:
-            if re.match('.*' + patt + '.*', os.path.join(r, f)):
+            if re.match(".*" + patt + ".*", os.path.join(r, f)):
                 files.append(os.path.join(r, f))
 
     return sorted(files)
@@ -73,12 +72,12 @@ def bti_import_fix_channel_names(data, pdfname):
 
     """
 
-    info_ = _read_bti_header(pdfname, pdfname[:-6] + 'config')
-    for i, ch in enumerate(info_['chs']):
-        rename = ch['name']
-        if rename[0] == 'E':
-            rename = ch['chan_label']
-        data.ch_names[i] = data.info['chs'][i]['ch_name'] = rename
+    info_ = _read_bti_header(pdfname, pdfname[:-6] + "config")
+    for i, ch in enumerate(info_["chs"]):
+        rename = ch["name"]
+        if rename[0] == "E":
+            rename = ch["chan_label"]
+        data.ch_names[i] = data.info["chs"][i]["ch_name"] = rename
 
 
 def seeg_ch_name_split(nm):
@@ -90,7 +89,7 @@ def seeg_ch_name_split(nm):
 
     """
 
-    elec, idx = re.match(r'([A-Za-z]+)(\d+)', nm).groups()
+    elec, idx = re.match(r"([A-Za-z]+)(\d+)", nm).groups()
     return elec, int(idx)
 
 
@@ -100,16 +99,16 @@ def apply_picks_to_proj(raw, picks):
 
     """
 
-    projs = raw.info['projs']
+    projs = raw.info["projs"]
     projs_ = []
     for proj in projs:
-        proj_data = proj['data']
-        proj_data['col_names'] = list(np.array(proj_data['col_names'])[picks])
-        proj_data['data']      = proj_data['data'][:, picks]
-        proj_data['ncol']      = len(proj_data['col_names'])
-        proj['data'] = proj_data
+        proj_data = proj["data"]
+        proj_data["col_names"] = list(np.array(proj_data["col_names"])[picks])
+        proj_data["data"] = proj_data["data"][:, picks]
+        proj_data["ncol"] = len(proj_data["col_names"])
+        proj["data"] = proj_data
         projs_.append(proj)
-    raw.info['projs'] = projs_
+    raw.info["projs"] = projs_
 
 
 def raw_sort_channels(raw):
@@ -122,16 +121,16 @@ def raw_sort_channels(raw):
     def key(name):
         try:
             elec, idx = seeg_ch_name_split(name)
-            keyed = '%s%03d' % (elec, idx)
+            keyed = "%s%03d" % (elec, idx)
         except:
             keyed = name
         return keyed
 
     ch_names = sorted(raw.ch_names, key=key)
-    chix = np.array(map(raw.ch_names.index, ch_names))
+    chix = np.array(list(map(raw.ch_names.index, ch_names)))
 
-    raw.info['chs'] = [raw.info['chs'][i] for i in chix]
-    raw.info['ch_names'] = ch_names
+    raw.info["chs"] = [raw.info["chs"][i] for i in chix]
+    raw.info["ch_names"] = ch_names
     raw._data = raw._data[chix]
 
     apply_picks_to_proj(raw, chix)
@@ -145,10 +144,10 @@ def find_bip_idx(seeg):
 
     """
 
-    for i in xrange(len(seeg.ch_names)-1):
-        (e1, i1), (e2, i2) = map(seeg_ch_name_split, seeg.ch_names[i:i+2])
-        if e1==e2:
-            yield i, i+1, e1, i1, i2
+    for i in range(len(seeg.ch_names) - 1):
+        (e1, i1), (e2, i2) = list(map(seeg_ch_name_split, seeg.ch_names[i : i + 2]))
+        if e1 == e2:
+            yield i, i + 1, e1, i1, i2
 
 
 def create_bipolar_montage(seeg, copy=True):
@@ -166,26 +165,26 @@ def create_bipolar_montage(seeg, copy=True):
 
     #   16, 17, 'OF',   2,   3  results in 'OF2-3', _data[16] = _data[16] - _data[17]
     for i1, i2, elec, ei1, ei2 in find_bip_idx(seeg):
-        ch_info = seeg.info['chs'][i1].copy()
-        ch_info['ch_name'] = '%s%d-%s%d' % (elec, ei1, elec, ei2)
+        ch_info = seeg.info["chs"][i1].copy()
+        ch_info["ch_name"] = "%s%d-%s%d" % (elec, ei1, elec, ei2)
         bip_chan.append(ch_info)
         bip_data.append(seeg._data[i1] - seeg._data[i2])
-        
-    seeg.info['chs'] = bip_chan
+
+    seeg.info["chs"] = bip_chan
     seeg._data = np.array(bip_data)
-    seeg.info['ch_names'] = [c['ch_name'] for c in seeg.info['chs']]
-    seeg.info['nchan'] = seeg._data.shape[0] 
+    seeg.info["ch_names"] = [c["ch_name"] for c in seeg.info["chs"]]
+    seeg.info["nchan"] = seeg._data.shape[0]
 
     return seeg
 
 
 def _parse_ch_list(chs):
-    if type(chs) in (str, unicode):
-        chs = re.split(',| ', chs)    
+    if type(chs) in (str, str):
+        chs = re.split(",| ", chs)
     return chs
 
 
-def pick_bip_chan(ch_names, include, exclude=[], delim='-'):
+def pick_bip_chan(ch_names, include, exclude=[], delim="-"):
     """
     Find indices of bipolar channels containing and excluding certain monopolar
     or bipolar channel names. 
@@ -198,10 +197,10 @@ def pick_bip_chan(ch_names, include, exclude=[], delim='-'):
         Channels to exclude, may be string as with include
         
     """
-    
+
     include = _parse_ch_list(include)
     exclude = _parse_ch_list(exclude)
-    
+
     idx = []
     for i, nm in enumerate(ch_names):
         ch, ref = nm.split(delim)
@@ -209,7 +208,7 @@ def pick_bip_chan(ch_names, include, exclude=[], delim='-'):
         exc = ch in exclude or ref in exclude
         if inc and not exc:
             idx.append(i)
-    
+
     return array(idx)
 
 
@@ -220,11 +219,11 @@ def seeg_yticks(run):
     """
 
     ix = [0]
-    nm = [run.chan[0].name.split('_')[0]]
-    for i in range(1, len(run.chan)-1):
-        (nm1, _), (nm2, _) = [c.name.split('_') for c in run.chan[i:i+2]]
+    nm = [run.chan[0].name.split("_")[0]]
+    for i in range(1, len(run.chan) - 1):
+        (nm1, _), (nm2, _) = [c.name.split("_") for c in run.chan[i : i + 2]]
         if nm1 != nm2:
-            ix.append(i+1)
+            ix.append(i + 1)
             nm.append(nm2)
     return ix, nm
 
@@ -244,12 +243,13 @@ def extract_windows(fs, ys, peaks, pre=-0.1, post=0.2, echan=None):
     oob = []
     epochs = []
     for i, peaki in enumerate(peaks):
-        ilo = int((peaki + pre)*fs)
-        ihi = int((peaki + post)*fs)
+        ilo = int((peaki + pre) * fs)
+        ihi = int((peaki + post) * fs)
         oob.append(ilo < 0 or ihi > ys.shape[1])
         if not oob[-1]:
             epochs.append(ys[echan[i], ilo:ihi] if only_echan else ys[:, ilo:ihi].T)
     return np.array(oob), np.array(epochs)
+
 
 def combine_events(events, lim=0.02, max=5000):
     """
@@ -259,8 +259,9 @@ def combine_events(events, lim=0.02, max=5000):
 
     events = np.concatenate([e for e in events if isinstance(e, np.ndarray)])
     events.sort()
-    events = events[np.diff(events)>lim]
-    return events[::int(len(events)/max + 1)]
+    events = events[np.diff(events) > lim]
+    return events[:: int(len(events) / max + 1)]
+
 
 @contextlib.contextmanager
 def mpool(n_jobs=1, **kwds):
@@ -279,13 +280,16 @@ def mpool(n_jobs=1, **kwds):
         pool.close()
     else:
         import itertools
+
         class FakePool(object):
             def imap(self, f, it, chunksize=10):
                 return (f(i) for i in it)
+
             def map(self, f, it, chunksize=10):
                 return [f(i) for i in it]
+
         yield FakePool()
-        
+
 
 def exists(names, namespace=None):
     """
@@ -313,10 +317,10 @@ def exists(names, namespace=None):
 
     """
 
-    names = names.split(' ') if ' ' in names else [names]
+    names = names.split(" ") if " " in names else [names]
     if namespace is None:
         namespace = inspect.currentframe().f_back.f_globals
-    existing = namespace.keys()
+    existing = list(namespace.keys())
     for name in names:
         if name not in existing:
             return False
@@ -330,30 +334,31 @@ class ChannelSelect(QtGui.QDialog):
     """
 
     def __init__(self, *args, **kwds):
-        QtGui.QDialog.__init__(self, parent=kwds.pop('parent', None))
+        QtGui.QDialog.__init__(self, parent=kwds.pop("parent", None))
         self.lay = QtGui.QVBoxLayout()
         self.setLayout(self.lay)
         self.lay_gb = QtGui.QHBoxLayout()
         self.lay.addLayout(self.lay_gb)
         self.selection = {}
         self.callbacks = {}
-        self.default_state = kwds.pop('default_state',
-                qt_core_enum('CheckState', 'Unchecked')) # QtCore.Qt.CheckState.Unchecked)
-        self.nrow = kwds.pop('nrow', 10)
+        self.default_state = kwds.pop(
+            "default_state", qt_core_enum("CheckState", "Unchecked")
+        )  # QtCore.Qt.CheckState.Unchecked)
+        self.nrow = kwds.pop("nrow", 10)
         if len(kwds) == 0 and len(args) > 0:
             for i, arg in enumerate(args):
-                kwds['Channel set %d' % (i + 1,)] = arg
-        for k, v in kwds.iteritems():
+                kwds["Channel set %d" % (i + 1,)] = arg
+        for k, v in kwds.items():
             self.setup_chan_set(k, v)
 
         self.lay_buttons = QtGui.QHBoxLayout()
         self.lay.addLayout(self.lay_buttons)
 
-        self.pb_no = QtGui.QPushButton('&Cancel')
+        self.pb_no = QtGui.QPushButton("&Cancel")
         self.pb_no.clicked.connect(self.reject)
         self.lay_buttons.addWidget(self.pb_no)
 
-        self.pb_ok = QtGui.QPushButton('&OK')
+        self.pb_ok = QtGui.QPushButton("&OK")
         self.pb_ok.clicked.connect(self.accept)
         self.lay_buttons.addWidget(self.pb_ok)
         self.pb_ok.setDefault(True)
@@ -361,6 +366,7 @@ class ChannelSelect(QtGui.QDialog):
     def make_checkbox_callback(self, cb, label):
         def _():
             self.selection[label] = cb.checkState()
+
         return _
 
     def setup_chan_set(self, ch_type, ch_labels):
@@ -380,29 +386,36 @@ class ChannelSelect(QtGui.QDialog):
             cb.stateChanged.connect(self.callbacks[l])
             cbs.append(cb)
             self.cbs[l] = cb
-            l_cb.addWidget(cb, i%self.nrow + 1, i/self.nrow)
-        setattr(self, 'gb_'+ch_type, gb)
+            l_cb.addWidget(cb, i % self.nrow + 1, i / self.nrow)
+        setattr(self, "gb_" + ch_type, gb)
         self.lay_gb.addWidget(gb)
         # setup all none control
         l_pb = QtGui.QHBoxLayout()
         lay.addLayout(l_pb)
-        pb_all = QtGui.QPushButton('All')
+        pb_all = QtGui.QPushButton("All")
+
         @pb_all.clicked.connect
         def set_all():
             for cb in cbs:
-               cb.setCheckState(qt_core_enum('CheckState', 'Checked'))
+                cb.setCheckState(qt_core_enum("CheckState", "Checked"))
+
         l_pb.addWidget(pb_all)
-        pb_none = QtGui.QPushButton('None')
+        pb_none = QtGui.QPushButton("None")
+
         @pb_none.clicked.connect
         def set_none():
             for cb in cbs:
-               cb.setCheckState(qt_core_enum('CheckState', 'Unchecked'))
+                cb.setCheckState(qt_core_enum("CheckState", "Unchecked"))
+
         l_pb.addWidget(pb_none)
 
     @property
     def selected(self):
-        return [k for k, v in self.selection.iteritems()
-                if v == qt_core_enum('CheckState', 'Checked')]
+        return [
+            k
+            for k, v in self.selection.items()
+            if v == qt_core_enum("CheckState", "Checked")
+        ]
 
     def indices(self, labels):
         return np.array([labels.index(k) for k in self.selected])
@@ -410,15 +423,19 @@ class ChannelSelect(QtGui.QDialog):
 
 def seeg_major_minor_ch_labels(labels):
     tick_pos_per_reg = {}
-    ch=[(i+0.5,)+re.match(r'([A-Z][a-zA-Z\']+)(\d+)', lab).groups() 
-            for i, lab in enumerate(labels)]
+    ch = [
+        (i + 0.5,) + re.match(r"([A-Z][a-zA-Z\']+)(\d+)", lab).groups()
+        for i, lab in enumerate(labels)
+    ]
 
     for p, r, i in ch:
         if r not in tick_pos_per_reg:
-            tick_pos_per_reg[r]=[]
+            tick_pos_per_reg[r] = []
         tick_pos_per_reg[r].append(p)
 
     minor_ticks = [(p, i) for p, r, i in ch]
-    major_ticks = [(np.max(tps)+0.5, r+'    ') for r, tps in tick_pos_per_reg.iteritems()]
+    major_ticks = [
+        (np.max(tps) + 0.5, r + "    ") for r, tps in tick_pos_per_reg.items()
+    ]
 
     return major_ticks, minor_ticks

@@ -1,4 +1,3 @@
-
 """
 Tools for performing clustering, relying mostly on scipy and scikits-learn.
 
@@ -24,14 +23,21 @@ from sklearn.cluster import DBSCAN
 from . import util
 
 
+def xrange(*args):
+    return list(range(*args))
+
+
 def _mp_pairwise_norm(u, r=xrange, n_jobs=1):
-    triu = ((i, j, u[i], u[j]) for i in r(len(u)) for j in r(len(u)) if j>i)
+    triu = ((i, j, u[i], u[j]) for i in r(len(u)) for j in r(len(u)) if j > i)
     with util.mpool(n_jobs) as p:
         for _ in p.imap(_mp_pairwise_norm_single, triu, 1000):
             yield _
 
-def _mp_pairwise_norm_single((i, j, ui, uj)):
+
+def _mp_pairwise_norm_single(xxx_todo_changeme):
+    (i, j, ui, uj) = xxx_todo_changeme
     return i, j, np.linalg.norm(ui.T.dot(uj))
+
 
 def subspace_similarity(epochs, n_components=3, n_jobs=1):
     """
@@ -49,15 +55,19 @@ def subspace_similarity(epochs, n_components=3, n_jobs=1):
 
     return us, dist
 
+
 def _mp_pairwise_epoch_corr(u, r=xrange, n_jobs=1):
-    triu = ((i, j, u[i], u[j]) for i in r(len(u)) for j in r(len(u)) if j>i)
+    triu = ((i, j, u[i], u[j]) for i in r(len(u)) for j in r(len(u)) if j > i)
     pool = multiprocessing.Pool(n_jobs)
     with util.mpool(n_jobs) as p:
         for _ in p.imap(_mp_pairwise_epoch_corr_single, triu, 1000):
             yield _
 
-def _mp_pairwise_epoch_corr_single((i, j, ui, uj)):
+
+def _mp_pairwise_epoch_corr_single(xxx_todo_changeme1):
+    (i, j, ui, uj) = xxx_todo_changeme1
     return i, j, abs((ui * uj).mean(axis=0)).mean()
+
 
 def temporal_similarity(epochs, n_components=3, n_jobs=1):
     """
@@ -72,6 +82,7 @@ def temporal_similarity(epochs, n_components=3, n_jobs=1):
         dist[i, j] = dist[j, i] = dij
 
     return dist
+
 
 def spectral_dbscan(aff, n_dim=2, eps=0.2, min_samples=50):
     """
@@ -88,8 +99,7 @@ def spectral_dbscan(aff, n_dim=2, eps=0.2, min_samples=50):
     import pylab as pl
     pl.hist(pd, 100)
     """
-    eps = np.percentile(pd, 100*eps)
-    print eps
+    eps = np.percentile(pd, 100 * eps)
+    print(eps)
     db = DBSCAN(eps=eps, min_samples=min_samples).fit(xi)
     return xi.T, db.labels_
-

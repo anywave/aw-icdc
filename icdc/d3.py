@@ -1,9 +1,8 @@
-
 "3-d visualization tools"
 
 import os
 import glob
-import dicom 
+import dicom
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
@@ -13,23 +12,25 @@ from .qt import QtCore, QtGui
 
 
 def dicom_ask_for_dir():
-    cfg = pg.QtCore.QSettings('INS', 'IC/DC')
-    path = cfg.value('dicomdir')
-    if type(path) not in (str, unicode):
-        path = unicode(path.toString())
-    print path, type(path), len(path)==0
+    cfg = pg.QtCore.QSettings("INS", "IC/DC")
+    path = cfg.value("dicomdir")
+    if type(path) not in (str, str):
+        path = str(path.toString())
+    print(path, type(path), len(path) == 0)
     """
     if len(path) == 0:
         path = os.path.expanduser('~')
     """
-    newpath = unicode(pg.QtGui.QFileDialog.getExistingDirectory(
-        directory=path,
-        caption='Select folder containing DICOM files'
-    ))
-    if len(newpath)>0:
-        cfg.setValue('dicomdir', newpath)
+    newpath = str(
+        pg.QtGui.QFileDialog.getExistingDirectory(
+            directory=path, caption="Select folder containing DICOM files"
+        )
+    )
+    if len(newpath) > 0:
+        cfg.setValue("dicomdir", newpath)
         return newpath
-    return ''
+    return ""
+
 
 # refactor to separate module
 class XImageViewBox(pg.ViewBox):
@@ -42,8 +43,8 @@ class XImageViewBox(pg.ViewBox):
         self.item = pg.ImageItem()
         self.item.setImage(self.image)
         self.addItem(self.item)
-        self.il_x = pg.InfiniteLine(pos=self.image.shape[0]/2, angle=90)
-        self.il_y = pg.InfiniteLine(pos=self.image.shape[1]/2, angle=0)
+        self.il_x = pg.InfiniteLine(pos=self.image.shape[0] / 2, angle=90)
+        self.il_y = pg.InfiniteLine(pos=self.image.shape[1] / 2, angle=0)
         self.addItem(self.il_x)
         self.addItem(self.il_y)
 
@@ -52,11 +53,11 @@ class XImageViewBox(pg.ViewBox):
         ((vxlo, vxhi), (vylo, vyhi)) = self.viewRange()
         r = self.rect()
         rxlo, rxhi, rylo, ryhi = r.left(), r.right(), r.bottom(), r.top()
-        nx = (x - rxlo)/(rxhi - rxlo)
-        ny = (y - rylo)/(ryhi - rylo)
+        nx = (x - rxlo) / (rxhi - rxlo)
+        ny = (y - rylo) / (ryhi - rylo)
         if normed:
             return nx, ny
-        return nx*(vxhi - vxlo) + vxlo, ny*(vyhi - vylo) + vylo
+        return nx * (vxhi - vxlo) + vxlo, ny * (vyhi - vylo) + vylo
 
     def mouseClickEvent(self, ev):
         pos = ev.x(), ev.y()
@@ -72,8 +73,8 @@ class XImageViewBox(pg.ViewBox):
     def wheelEvent(self, ev):
         pass
 
-class XImageWidget(pg.GraphicsView):
 
+class XImageWidget(pg.GraphicsView):
     def __init__(self, image=None):
         pg.GraphicsView.__init__(self)
         self.xi = XImageViewBox(image=image)
@@ -82,6 +83,7 @@ class XImageWidget(pg.GraphicsView):
     # mouse dragging continously sets position
 
     _pressed = False
+
     def mousePressEvent(self, ev):
         self._pressed = True
         self.xi.mouseClickEvent(ev)
@@ -92,6 +94,7 @@ class XImageWidget(pg.GraphicsView):
     def mouseMoveEvent(self, ev):
         if self._pressed:
             self.xi.mouseClickEvent(ev)
+
 
 class Slice(XImageWidget):
 
@@ -109,7 +112,7 @@ class Slice(XImageWidget):
         del self.shape[axis]
         self.xi.sigPosChanged.connect(self.pos_changed)
         self.ignore_pos_changes = False
-        self.idx = data.shape[axis]/2
+        self.idx = data.shape[axis] / 2
 
     def pos_changed(self, pos):
         x, y = pos
@@ -141,7 +144,7 @@ class Slice(XImageWidget):
         try:
             ary = self.data[tuple(sl)]
         except Exception as exc:
-            print 'no slice', exc, sl
+            print("no slice", exc, sl)
             return
         jx = -1 if self.fx else 1
         jy = -1 if self.fy else 1
@@ -160,51 +163,52 @@ class Slice(XImageWidget):
     slice = property(_get_slice, _set_slice)
 
 
-class ImageContrastControl():
+class ImageContrastControl:
     pass
 
 
 class SlicesVolume(gl.GLViewWidget):
-
     def __init__(self, images, datasets=None, parent=None):
         gl.GLViewWidget.__init__(self, parent=parent)
         self.images = np.transpose(images, (2, 1, 0)).copy()
         self.datasets = datasets
         self.volume = np.zeros(self.images.shape + (4,), np.ubyte)
 
-        self.images  = (self.images - self.images.min())*255.0/self.images.ptp()
+        self.images = (self.images - self.images.min()) * 255.0 / self.images.ptp()
 
-        print self.images.min(), self.images.max()
-    
+        print(self.images.min(), self.images.max())
+
         p10, p90 = np.percentile(self.images.flat[:], [1, 99])
-        self.images = np.clip((self.images - p10)/(p90-p10)*256, 0, 255).astype(np.ubyte)
+        self.images = np.clip((self.images - p10) / (p90 - p10) * 256, 0, 255).astype(
+            np.ubyte
+        )
         self.volume[..., 0] = self.images
         self.volume[..., 1] = self.images
         self.volume[..., 2] = self.images
-        #self.volume[..., 1] = 255 - self.images
-        #self.volume[..., 2] = 255 - 2*np.abs(self.images - 128)
-        self.volume[..., 3] = self.images/10
+        # self.volume[..., 1] = 255 - self.images
+        # self.volume[..., 2] = 255 - 2*np.abs(self.images - 128)
+        self.volume[..., 3] = self.images / 10
 
         self.item = gl.GLVolumeItem(self.volume)
-        self.item.scale(*[1.0/s for s in self.images.shape])
+        self.item.scale(*[1.0 / s for s in self.images.shape])
         self.item.translate(-0.5, -0.5, -0.5)
         self.addItem(self.item)
 
     def keyPressEvent(self, ev):
         k = str(ev.text())
-        print k, k.lower(), k.lower() in 's'
-        if k and k.lower() in 'xcv':
+        print(k, k.lower(), k.lower() in "s")
+        if k and k.lower() in "xcv":
             tr = [0, 0, 0]
-            tr['xcv'.index(k.lower())] = 10*(-1 if k==k.lower() else 1)
+            tr["xcv".index(k.lower())] = 10 * (-1 if k == k.lower() else 1)
             self.item.translate(*tr)
-        if k and k.lower() in 'sdf':
+        if k and k.lower() in "sdf":
             sc = [1, 1, 1]
-            sc['sdf'.index(k.lower())] = 1 + (0.2 if k==k.lower() else -0.2)
+            sc["sdf".index(k.lower())] = 1 + (0.2 if k == k.lower() else -0.2)
             self.item.scale(*sc)
-        if k and k.lower() in 'Aa':
-            self.item.data[..., -1] *= 0.5 if k=='a' else 2
+        if k and k.lower() in "Aa":
+            self.item.data[..., -1] *= 0.5 if k == "a" else 2
             self.item.initializeGL()
-            self.item.scale(1,1,1)
+            self.item.scale(1, 1, 1)
 
 
 class FlipBoard(pg.QtGui.QWidget):
@@ -213,14 +217,17 @@ class FlipBoard(pg.QtGui.QWidget):
         self.lay = pg.QtGui.QGridLayout()
         self.setLayout(self.lay)
         self.refs = []
-        for i, ax in enumerate('xyz'):
-            for j, attr in enumerate('T fx fy'.split()):
-                cb = pg.QtGui.QCheckBox(ax + ' ' + attr)
+        for i, ax in enumerate("xyz"):
+            for j, attr in enumerate("T fx fy".split()):
+                cb = pg.QtGui.QCheckBox(ax + " " + attr)
+
                 def _(obj, attr):
                     def __(state):
-                        setattr(obj, attr, state>0)
+                        setattr(obj, attr, state > 0)
                         obj.update_image()
+
                     return __
+
                 ij = _(slices[i], attr)
                 cb.stateChanged.connect(ij)
                 self.lay.addWidget(cb, j, i)
@@ -235,24 +242,26 @@ class Controls(pg.QtGui.QWidget):
         self.setLayout(self.lay)
         self.pbs = []
         for k in dir(self):
-            if k.startswith('pb_'):
+            if k.startswith("pb_"):
                 f = getattr(self, k)
-                k = k.split('_')
-                pb = pg.QtGui.QPushButton(' '.join(k[3:]).title())
+                k = k.split("_")
+                pb = pg.QtGui.QPushButton(" ".join(k[3:]).title())
                 pb.clicked.connect(f)
                 self.lay.addWidget(pb, int(k[1]), int(k[2]))
                 self.pbs.append(pb)
 
     dups = []
+
     def pb_0_0_duplicate(self):
         self.dups.append(MultiXImage.from_datasets(self.datasets))
         self.dups[-1].show()
 
-    lastpath = [os.path.expanduser('~')]
+    lastpath = [os.path.expanduser("~")]
+
     def pb_1_0_open(self):
         path = dicom_ask_for_dir()
         if path:
-            self.newmxi = MultiXImage.from_glob(os.path.join(path, '*'))
+            self.newmxi = MultiXImage.from_glob(os.path.join(path, "*"))
             self.newmxi.show()
 
     def pb_0_1_show_volume(self):
@@ -260,16 +269,15 @@ class Controls(pg.QtGui.QWidget):
         self.volwin = SlicesVolume(image, self.datasets)
         self.volwin.show()
 
-
     def pb_0_2_metadata(self):
         self.metadatatw = pg.TableWidget()
         ds = self.datasets[0]
         self.metadata = []
         for k in ds.dir():
             v = ds.data_element(k)
-            if v=='PixelData' or v is None:
+            if v == "PixelData" or v is None:
                 continue
-            self.metadata.append((k, repr(v.value).encode('ascii', 'ignore')[:20]))
+            self.metadata.append((k, repr(v.value).encode("ascii", "ignore")[:20]))
         self.metadatatw.setData(np.array(self.metadata, dtype=object))
         self.metadatatw.show()
 
@@ -301,7 +309,7 @@ class MultiXImage(pg.QtGui.QWidget):
         self.lay.addWidget(self.sl_x, 0, 0)
         self.lay.addWidget(self.sl_y, 0, 1)
         self.lay.addWidget(self.sl_z, 1, 0)
-    
+
     def change_x(self, x):
         self.sl_y.slice = x
         self.sl_z.set_pos(x=x)
@@ -332,14 +340,13 @@ class MultiXImage(pg.QtGui.QWidget):
         self.sl_z.sigXChanged.connect(self.change_x)
         self.sl_z.sigYChanged.connect(self.change_y)
 
-
     @classmethod
     def from_glob(cls, pathglob):
         return cls.from_files(sorted(glob.glob(pathglob)))
 
     @classmethod
     def from_files(cls, files):
-        return cls.from_datasets(map(dicom.read_file, files))
+        return cls.from_datasets(list(map(dicom.read_file, files)))
 
     @classmethod
     def from_datasets(cls, datasets):
@@ -349,6 +356,4 @@ class MultiXImage(pg.QtGui.QWidget):
     def from_file_dialog(cls):
         path = dicom_ask_for_dir()
         if path:
-            return cls.from_glob(os.path.join(path, '*'))
-
-
+            return cls.from_glob(os.path.join(path, "*"))

@@ -1,4 +1,3 @@
-
 import sys
 import copy
 import traceback
@@ -13,25 +12,25 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 class Dataset(object):
     "Aggregate dataset: data, fs, chlabels, nchan, nsamp, events, events labels, parameters, etc. "
 
-    filename = ''
+    filename = ""
     fs = 0.0
     nchan = 0
     nsamp = 0
 
-    def __init__(self, filename=''):
+    def __init__(self, filename=""):
         self.filename = filename
         self.events = []
         self.labels = []
         self.picks = []
-        self.preprocess = 'No preprocessing'
+        self.preprocess = "No preprocessing"
         self.data = np.array(())
 
     @property
     def nev_per_chan(self):
         nev = [0 for _ in self.labels]
         for ev in self.events:
-            for targ in ev['targets']:
-                if type(targ) in (str, unicode):
+            for targ in ev["targets"]:
+                if type(targ) in (str, str):
                     try:
                         targ = self.labels.index(targ)
                     except:
@@ -42,7 +41,7 @@ class Dataset(object):
     def copy(self):
         "Return a copy of this dataset"
         ds = Dataset(self.filename)
-        for attr in 'fs nchan nsamp events labels'.split():
+        for attr in "fs nchan nsamp events labels".split():
             setattr(ds, attr, copy.deepcopy(getattr(self, attr)))
         ds.data = self.data.copy()
         return ds
@@ -53,15 +52,16 @@ class Dataset(object):
 
     @property
     def pick_idx(self):
-        return np.r_[:self.nchan][self.pick_mask]
+        return np.r_[: self.nchan][self.pick_mask]
 
     def update(self, ds):
         samefile = self.filename == ds.filename
-        for attr in 'filename fs nchan nsamp labels data'.split():
+        for attr in "filename fs nchan nsamp labels data".split():
             setattr(self, attr, getattr(ds, attr))
         [self.events.append(e) for e in ds.events]
         if not samefile:
             self.picks = self.labels[:]
+
 
 class ErrorBox(QtGui.QWidget):
     def __init__(self, msg, namespace=None, parent=None):
@@ -72,24 +72,24 @@ class ErrorBox(QtGui.QWidget):
         self.lay = QtGui.QVBoxLayout()
         self.setLayout(self.lay)
 
-        self.setWindowTitle('Oh noes! An error!')
+        self.setWindowTitle("Oh noes! An error!")
 
         self.textedit = QtGui.QTextEdit()
-        self.textedit.setHtml('<pre>%s</pre>' % (msg,))
+        self.textedit.setHtml("<pre>%s</pre>" % (msg,))
         self.lay.addWidget(self.textedit)
 
         self.lay_buttons = QtGui.QHBoxLayout()
         self.lay.addLayout(self.lay_buttons)
 
-        self.pb_debug = QtGui.QPushButton('&Debug')
+        self.pb_debug = QtGui.QPushButton("&Debug")
         self.pb_debug.clicked.connect(self.debug)
         self.lay_buttons.addWidget(self.pb_debug)
 
-        self.pb_copy = QtGui.QPushButton('&Copy message to clipboard')
+        self.pb_copy = QtGui.QPushButton("&Copy message to clipboard")
         self.pb_copy.clicked.connect(self.copy_msg)
         self.lay_buttons.addWidget(self.pb_copy)
 
-        self.pb_close = QtGui.QPushButton('&OK')
+        self.pb_close = QtGui.QPushButton("&OK")
         self.pb_close.clicked.connect(self.close)
         self.lay_buttons.addWidget(self.pb_close)
 
@@ -99,7 +99,8 @@ class ErrorBox(QtGui.QWidget):
 
     def debug(self):
         import pyqtgraph.console as con
-        ns = self.namespace['tb'].tb_next.tb_frame.f_locals
+
+        ns = self.namespace["tb"].tb_next.tb_frame.f_locals
         self.cw = con.ConsoleWidget(namespace=ns)
         self.cw.show()
 
@@ -108,7 +109,7 @@ class ErrorBox(QtGui.QWidget):
 
 
 class Action(QtGui.QAction):
-    _text = u"<no name Action>"
+    _text = "<no name Action>"
 
     status = QtCore.Signal(object)
     done = QtCore.Signal()
@@ -118,20 +119,23 @@ class Action(QtGui.QAction):
         self.triggered.connect(self._run)
         self.status.connect(self.main.status)
         self.done.connect(self.main.status_done)
-        if hasattr(self, '_shortcut'):
+        if hasattr(self, "_shortcut"):
             self.setShortcut(QtGui.QKeySequence(self._shortcut))
 
     def _run(self):
         try:
-            self.status.emit('starting ' + self._text)
+            self.status.emit("starting " + self._text)
             self.run()
             self.done.emit()
         except Exception as exc:
             t, v, tb = sys.exc_info()
-            msg = '%r failed\n%s\n\n%s' % (self, '\n'.join(traceback.format_tb(tb)), exc)
+            msg = "%r failed\n%s\n\n%s" % (
+                self,
+                "\n".join(traceback.format_tb(tb)),
+                exc,
+            )
             self.status.emit(msg)
-            self.excmsg = ErrorBox(msg,
-                namespace=locals())
+            self.excmsg = ErrorBox(msg, namespace=locals())
             self.excmsg.show()
         finally:
             m = self.main
@@ -139,11 +143,13 @@ class Action(QtGui.QAction):
 
     def run(self):
         "Subclasses should override this method to provide action code"
-        msg = 'An %s instance was triggered but no handler is defined.'
+        msg = "An %s instance was triggered but no handler is defined."
         self.status.emit(msg % (self.__class__.__name__,))
 
-    def _msgbox(self, msg, info=''):
-        self.msg = QtGui.QMessageBox.information(self.parentWidget(), self._text, msg + info)
+    def _msgbox(self, msg, info=""):
+        self.msg = QtGui.QMessageBox.information(
+            self.parentWidget(), self._text, msg + info
+        )
 
     @property
     def main(self):
@@ -153,14 +159,16 @@ class Action(QtGui.QAction):
 
 class ParamsDialog(QtGui.QDialog):
     parameters = []
+
     def __init__(self, parameters=[], parent=None):
         QtGui.QDialog.__init__(self, parent=parent)
 
         self.lay = QtGui.QVBoxLayout()
         self.setLayout(self.lay)
 
-        self.pars = Parameter.create(name='pars', type='group', 
-                children=parameters or self.parameters)
+        self.pars = Parameter.create(
+            name="pars", type="group", children=parameters or self.parameters
+        )
         self.partree = ParameterTree()
         self.partree.setParameters(self.pars, showTop=False)
 
@@ -169,11 +177,11 @@ class ParamsDialog(QtGui.QDialog):
         self.lay_buttons = QtGui.QHBoxLayout()
         self.lay.addLayout(self.lay_buttons)
 
-        self.pb_no = QtGui.QPushButton('&Cancel')
+        self.pb_no = QtGui.QPushButton("&Cancel")
         self.pb_no.clicked.connect(self.reject)
         self.lay_buttons.addWidget(self.pb_no)
 
-        self.pb_ok = QtGui.QPushButton('&OK')
+        self.pb_ok = QtGui.QPushButton("&OK")
         self.pb_ok.clicked.connect(self.accept)
         self.lay_buttons.addWidget(self.pb_ok)
         self.pb_ok.setDefault(True)
@@ -181,4 +189,3 @@ class ParamsDialog(QtGui.QDialog):
     @property
     def values(self):
         return [p.value() for p in self.pars.children()]
-
